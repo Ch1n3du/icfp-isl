@@ -36,10 +36,6 @@ impl Parser {
         }
     }
 
-    fn previous(&self) -> Token {
-        self.source[self.current - 1].to_owned()
-    }
-
     /// Returns the next token.
     fn peek(&self) -> Option<Token> {
         if !self.is_at_end() {
@@ -111,6 +107,11 @@ impl Parser {
         }
 
         val
+    }
+
+    pub fn parse_tokens(source: &[Token]) -> ParserResult<Vec<Move>> {
+        let mut parsy = Parser::new(source);
+        parsy.parse()
     }
 
     // ! ENTRY POINT
@@ -385,13 +386,6 @@ impl Parser {
     fn number(&mut self) -> ParserResult<u64> {
         let tok = self.consume(TokenType::Number, "")?;
         Ok(tok.num.unwrap())
-    }
-
-    /// <newline> ::= "\n"
-    fn newline(&mut self) -> ParserResult<()> {
-        self.consume(TokenType::NewLine, "Expected a newline.")?;
-
-        Ok(())
     }
 }
 

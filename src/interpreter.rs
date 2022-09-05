@@ -1,9 +1,11 @@
-use std::{collections::HashMap, panic::Location};
-
 use crate::{
     ast::{within, BlockId, Color, Move, Orientation, Point},
     token::Position,
 };
+
+use colored::*;
+use std::collections::HashMap;
+use thiserror::Error;
 
 pub struct Interpreter {
     blocks: HashMap<BlockId, BlockData>,
@@ -13,16 +15,65 @@ pub struct Interpreter {
     pixels: Vec<Color>,
 }
 
+impl Default for Interpreter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Interpreter {
-    pub fn interpret(&mut self, moves: &[Move]) -> Result<u64, InterpreterError> {
+    pub fn new() -> Interpreter {
+        let width: u64 = 100;
+        let heigth: u64 = 100;
+
+        let mut blocks = HashMap::new();
+        blocks.insert(
+            BlockId::new(0),
+            BlockData {
+                tl: Point::new(0, heigth),
+                tr: Point::new(width, heigth),
+                bl: Point::new(0, 0),
+                br: Point::new(width, 0),
+            },
+        );
+
+        let width = width as usize;
+        let height = heigth as usize;
+        let pixel_count = width * height;
+
+        let mut pixels = Vec::with_capacity(pixel_count);
+        for _ in 0..pixel_count {
+            pixels.push(Color(255, 255, 255, 1))
+        }
+
+        Interpreter {
+            blocks,
+            counter: 0,
+            width,
+            height,
+            pixels,
+        }
+    }
+
+    pub fn interpret(&mut self, moves: &[Move], verbose: bool) -> Result<u64, InterpreterError> {
         let mut sum = 0;
         let canvas_size = (self.height * self.width) as u64;
 
-        for move_ in moves.iter().cloned() {
-            match self.execute(move_) {
+        for (i, move_) in moves.iter().enumerate() {
+            match self.execute(move_.clone()) {
                 Ok((base_cost, block_size)) => {
                     let cost = base_cost * canvas_size / block_size;
                     sum += cost;
+                    if verbose {
+                        let move_ = format!("{move_}").blue();
+                        let cost = if cost < 2000 {
+                            format!("{cost}").green()
+                        } else {
+                            format!("{cost}").red()
+                        };
+                        let move_no = format!("Move {i}").bright_yellow();
+                        println!("[{move_no}]: {move_}\n--> Cost: {cost}",)
+                    }
                 }
                 Err(e) => return Err(e),
             }
@@ -31,14 +82,14 @@ impl Interpreter {
         Ok(sum)
     }
     fn execute(&mut self, m: Move) -> InterpreterResult<(u64, u64)> {
-        match m {
+        let res = match m {
             Move::LCut {
                 block_id,
                 orientation,
                 line_no,
                 position,
             } => {
-                let parent = self.blocks.get(&block_id).unwrap();
+                let parent = self.get_block(&block_id, &position)?;
                 let size = parent.size();
                 let bounds = (parent.tl, parent.br);
                 let n = line_no;
@@ -83,9 +134,9 @@ impl Interpreter {
                         };
                     }
                     Orientation::Horizontal => {
-                        let mut bisector = (parent.tl, parent.tr);
-                        bisector.0 = bisector.0.move_down(n);
-                        bisector.1 = bisector.1.move_down(n);
+                        let bisector_0 = Point::new(parent.tl.x + n, parent.tl.y);
+                        let bisector_1 = Point::new(parent.tr.x + n, parent.tr.y);
+                        let bisector = (bisector_0, bisector_1);
 
                         zero = BlockData {
                             tl: parent.tl,
@@ -135,7 +186,7 @@ impl Interpreter {
                 let p1 = parent.tl;
                 let p2 = parent.tl.move_right(point.x - parent.tl.x);
                 let p3 = parent.tr;
-                let p4 = Point::new(parent.tl.y + point.y, parent.tl.x);
+                let p4 = Point::new(parent.tl.x, point.y);
                 let p5 = point;
                 let p6 = Point::new(parent.tr.x, point.y);
                 let p7 = parent.bl;
@@ -200,7 +251,7 @@ impl Interpreter {
                 position,
             } => {
                 let block = self.get_block(&block_id, &position)?;
-                let block = block.clone();
+                let block = block;
                 let size = block.size();
                 self.color_block(block.clone(), color);
                 self.blocks.insert(block_id, block);
@@ -256,7 +307,9 @@ impl Interpreter {
 
                 Ok((1, block_1.size() + block_2.size()))
             }
-        }
+        };
+        self.counter += 1;
+        res
     }
 
     fn color_block(&mut self, block: BlockData, color: Color) {
@@ -281,7 +334,7 @@ impl Interpreter {
         block_id: &BlockId,
         position: &Position,
     ) -> InterpreterResult<BlockData> {
-        if let Some(block) = self.blocks.get(&block_id) {
+        if let Some(block) = self.blocks.get(block_id) {
             Ok(block.clone())
         } else {
             Err(InterpreterError::BlockNonExistent(
@@ -296,7 +349,8 @@ impl Interpreter {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Error, Clone)]
+#[error("Block{{{tl}, {tr}, {bl}, {br}")]
 pub struct BlockData {
     tl: Point,
     tr: Point,
@@ -359,10 +413,15 @@ impl BlockData {
     }
 }
 
+#[derive(Debug, Error)]
 pub enum InterpreterError {
+    #[error("Point {0} is out of bounds {1:?}, {2}.")]
     OutOfBounds(Point, (Point, Point), Position),
+    #[error("Block having BlockId {0} doesn't exist, {1}.")]
     BlockNonExistent(BlockId, Position),
+    #[error("Block {0} and {1} aren't of the same size, {2}.")]
     NotTheSameSize(BlockId, BlockId, Position),
+    #[error("Block {0} and {1} aren't next to each other, {2}.")]
     NotAdjoint(BlockId, BlockId, Position),
 }
 

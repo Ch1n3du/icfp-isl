@@ -34,6 +34,16 @@ pub struct Position {
     pub indices: (usize, usize),
 }
 
+impl std::fmt::Display for Position {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "on line {} column {}-{}",
+            self.line, self.col.0, self.col.1
+        )
+    }
+}
+
 impl Position {
     pub fn new(
         line: usize,

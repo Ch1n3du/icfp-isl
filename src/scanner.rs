@@ -117,7 +117,7 @@ impl Scanner {
             b if b.is_ascii_alphabetic() => self.scan_ident(),
             b'\n' => {
                 let tok = self.mk_token(TokenType::NewLine);
-                self.line += 1;
+                self.increment_line();
                 tok
             }
             _ => None,
