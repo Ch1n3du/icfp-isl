@@ -170,14 +170,14 @@ impl Parser {
     fn cut_move(&mut self) -> ParserResult<Move> {
         let tok = self.consume(TokenType::Cut, "")?;
         let position = tok.position;
-        let block = self.block()?;
+        let block_id = self.block()?;
 
         // pcut-move -> "cut" block point
         let move_ = if self.check_twice(TokenType::Number) {
             let point = self.point()?;
 
             Move::PCut {
-                block,
+                block_id,
                 point,
                 position,
             }
@@ -188,7 +188,7 @@ impl Parser {
             let line_no = self.line_number()?;
 
             Move::LCut {
-                block,
+                block_id,
                 orientation,
                 line_no,
                 position,
@@ -201,11 +201,11 @@ impl Parser {
     /// <color-move> -> "color" block color ;
     fn color_move(&mut self) -> ParserResult<Move> {
         let tok = self.consume(TokenType::Color, "")?;
-        let block = self.block()?;
+        let block_id = self.block()?;
         let color = self.color()?;
 
         Ok(Move::Color {
-            block,
+            block_id,
             color,
             position: tok.position,
         })
@@ -214,12 +214,12 @@ impl Parser {
     /// swap-move -> "swap" block block ;
     fn swap_move(&mut self) -> ParserResult<Move> {
         let tok = self.consume(TokenType::Swap, "")?;
-        let block_1 = self.block()?;
-        let block_2 = self.block()?;
+        let block_id_1 = self.block()?;
+        let block_id_2 = self.block()?;
 
         Ok(Move::Swap {
-            block_1,
-            block_2,
+            block_id_1,
+            block_id_2,
             position: tok.position,
         })
     }
@@ -227,12 +227,12 @@ impl Parser {
     /// merge-move -> "merge" block block ;
     fn merge_move(&mut self) -> ParserResult<Move> {
         let tok = self.consume(TokenType::Merge, "")?;
-        let block_1 = self.block()?;
-        let block_2 = self.block()?;
+        let block_id_1 = self.block()?;
+        let block_id_2 = self.block()?;
 
         Ok(Move::Merge {
-            block_1,
-            block_2,
+            block_id_1,
+            block_id_2,
             position: tok.position,
         })
     }
