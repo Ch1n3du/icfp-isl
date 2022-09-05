@@ -1,20 +1,24 @@
+use std::rc::Rc;
+
 use crate::token::{Position, Token, TokenType};
 
 #[derive(Debug)]
 pub struct Scanner {
-    source: Vec<u8>,
+    source: Rc<Vec<u8>>,
     start: usize,
     current: usize,
     line: usize,
+    col: (usize, usize),
 }
 
 impl Scanner {
     fn new(source: &[u8]) -> Scanner {
         Scanner {
-            source: source.to_vec(),
+            source: Rc::new(source.to_vec()),
             start: 0,
             current: 0,
             line: 0,
+            col: (0, 0),
         }
     }
 
@@ -24,6 +28,12 @@ impl Scanner {
 
     fn increment_current(&mut self) {
         self.current += 1;
+        self.col.1 += 1;
+    }
+
+    fn increment_line(&mut self) {
+        self.line += 1;
+        self.col = (0, 0)
     }
 
     /// Returns the next character.
@@ -47,7 +57,12 @@ impl Scanner {
     }
 
     fn get_curr_position(&self) -> Position {
-        Position::new(self.line, (self.start, self.current))
+        Position::new(
+            self.line,
+            self.col,
+            &self.source,
+            (self.start, self.current),
+        )
     }
 
     fn get_curr_lexeme(&mut self) -> String {
@@ -58,13 +73,18 @@ impl Scanner {
             .collect::<String>()
     }
 
-    fn mk_token(&mut self, token_type: TokenType) -> Option<Token> {
+    fn mk_token_with_num(&mut self, token_type: TokenType, num: Option<u64>) -> Option<Token> {
         let token = Token {
             token_type,
+            num,
             position: self.get_curr_position(),
         };
 
         Some(token)
+    }
+
+    fn mk_token(&mut self, token_type: TokenType) -> Option<Token> {
+        self.mk_token_with_num(token_type, None)
     }
 
     pub fn scan_tokens(&mut self) -> Vec<Token> {
@@ -72,12 +92,13 @@ impl Scanner {
 
         while !self.is_at_end() {
             self.start = self.current;
+            self.col = (self.col.1, self.col.1);
             match self.scan_token() {
                 Some(token) => tokens.push(token),
                 None => (),
             };
         }
-
+        tokens.push(self.mk_token(TokenType::Eof).unwrap());
         tokens
     }
 
@@ -90,6 +111,7 @@ impl Scanner {
             b'[' => self.mk_token(TokenType::LeftBrace),
             b']' => self.mk_token(TokenType::RightBrace),
             b',' => self.mk_token(TokenType::Comma),
+            b'.' => self.mk_token(TokenType::Dot),
             b'#' => self.scan_comment(),
             b if b.is_ascii_digit() => self.scan_digit(),
             b if b.is_ascii_alphabetic() => self.scan_ident(),
@@ -112,7 +134,7 @@ impl Scanner {
             .parse::<u64>()
             .expect("Error parsing number into u64");
 
-        self.mk_token(TokenType::Number(num))
+        self.mk_token_with_num(TokenType::Number, Some(num))
     }
 
     fn scan_ident(&mut self) -> Option<Token> {
@@ -120,13 +142,13 @@ impl Scanner {
             self.advance();
         }
 
-        let lex = self.get_curr_lexeme();
-        let token_type = match lex.as_str() {
+        let token_type = match self.get_curr_lexeme().as_str() {
             "cut" => TokenType::Cut,
             "color" => TokenType::Color,
             "swap" => TokenType::Swap,
             "merge" => TokenType::Merge,
-            _ => TokenType::Identifier(lex),
+            // ! Change to Scanner Result
+            lex => panic!("Unexpected identifier: {lex}"),
         };
 
         self.mk_token(token_type)
@@ -135,6 +157,11 @@ impl Scanner {
     fn scan_comment(&mut self) -> Option<Token> {
         while !self.is_at_end() && self.peek().unwrap() != b'\n' {
             self.advance();
+
+            if let Some(b'\n') = self.peek() {
+                self.advance();
+                break;
+            }
         }
 
         None
@@ -156,7 +183,7 @@ mod tests {
 
     #[test]
     fn scans_symbols() {
-        let tokens = Scanner::scan_str("x X y Y [ ] , \n 69 cut color swap merge ferris");
+        let tokens = Scanner::scan_str("x X y Y [ ] , . \n 69 cut color swap merge");
 
         let expected_tokens = vec![
             TokenType::Vertical,
@@ -166,13 +193,14 @@ mod tests {
             TokenType::LeftBrace,
             TokenType::RightBrace,
             TokenType::Comma,
+            TokenType::Dot,
             TokenType::NewLine,
-            TokenType::Number(69_u64),
+            TokenType::Number,
             TokenType::Cut,
             TokenType::Color,
             TokenType::Swap,
             TokenType::Merge,
-            TokenType::Identifier("ferris".to_string()),
+            TokenType::Eof,
         ];
 
         assert_eq!(
