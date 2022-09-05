@@ -72,7 +72,7 @@ impl Interpreter {
                             format!("{cost}").red()
                         };
                         let move_no = format!("Move {i}").bright_yellow();
-                        println!("[{move_no}]: {move_}\n--> Cost: {cost}",)
+                        println!("[{move_no}]: {move_}\n{} {cost}", "Cost:".blink().bold())
                     }
                 }
                 Err(e) => return Err(e),
@@ -417,7 +417,7 @@ impl BlockData {
 pub enum InterpreterError {
     #[error("Point {0} is out of bounds {1:?}, {2}.")]
     OutOfBounds(Point, (Point, Point), Position),
-    #[error("Block having BlockId {0} doesn't exist, {1}.")]
+    #[error("Block '{0}' doesn't exist, {1}.")]
     BlockNonExistent(BlockId, Position),
     #[error("Block {0} and {1} aren't of the same size, {2}.")]
     NotTheSameSize(BlockId, BlockId, Position),

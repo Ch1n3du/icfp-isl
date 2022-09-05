@@ -1,13 +1,17 @@
 use crate::{error::ISLError, interpreter::Interpreter, parser::Parser, scanner::Scanner};
 use colored::*;
-use std::io::stdin;
+use std::{
+    borrow::Borrow,
+    io::{self, stdin, Write},
+};
 
 pub fn run_repl(verbose: bool) {
     let mut interpreter = Interpreter::new();
     println!("ICFP ISL Interpreter Version 1.0.0");
     println!("Enter ':q' to quit.");
-    print!(" λ ");
+
     'a: loop {
+        print!(" λ> ");
         let mut input = String::new();
         if let Err(e) = stdin().read_line(&mut input) {
             println!("{}", ISLError::IO(e));
@@ -23,13 +27,13 @@ pub fn run_repl(verbose: bool) {
         let moves = match Parser::parse_tokens(&tokens) {
             Ok(yay) => yay,
             Err(e) => {
-                println!("{}", e);
+                println!("{}", ISLError::Parser(e));
                 break 'a;
             }
         };
         match interpreter.interpret(&moves, verbose) {
             Ok(cost) => {
-                println!("Cost: {}", cost);
+                println!("{} {}", "Cost:".blink().bold(), cost);
             }
             Err(e) => {
                 println!("{}", ISLError::Interpreter(e));
@@ -53,13 +57,13 @@ pub fn run_file(file_name: String, verbose: bool) {
     let moves = match Parser::parse_tokens(&tokens) {
         Ok(yay) => yay,
         Err(e) => {
-            println!("{}", e);
+            println!("{}", ISLError::Parser(e));
             return;
         }
     };
     match interpreter.interpret(&moves, verbose) {
         Ok(cost) => {
-            println!("Cost: {}", cost);
+            println!("{} {}", "Total Cost:".blink().bold(), cost);
         }
         Err(e) => {
             println!("{}", ISLError::Interpreter(e));

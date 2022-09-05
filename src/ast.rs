@@ -1,5 +1,5 @@
 use crate::token::Position;
-use std::fmt::{self, write};
+use std::fmt;
 use thiserror::Error;
 
 #[derive(Debug, Error, Clone)]

@@ -308,27 +308,27 @@ impl Parser {
     fn color(&mut self) -> ParserResult<Color> {
         self.consume(
             TokenType::LeftBrace,
-            "Expected a '[' at the beginning of a color.",
+            "Expected a '[' at the beginning of a color",
         )?;
         let r = self.rgb_value()?;
         self.consume(
             TokenType::Comma,
-            "Expected a ',' after the 'r' value in a color.",
+            "Expected a ',' after the 'r' value in a color",
         )?;
         let g = self.rgb_value()?;
         self.consume(
             TokenType::Comma,
-            "Expected a ',' after the 'g' value in a color.",
+            "Expected a ',' after the 'g' value in a color",
         )?;
         let b = self.rgb_value()?;
         self.consume(
             TokenType::Comma,
-            "Expected a ',' after the 'b' value in a color.",
+            "Expected a ',' after the 'b' value in a color",
         )?;
         let a = self.rgb_value()?;
         self.consume(
             TokenType::RightBrace,
-            "Expcted a ']' after the 'a' value in a color.",
+            "Expcted a ']' after the 'a' value in a color",
         )?;
 
         Ok(Color(r, g, b, a))
@@ -338,7 +338,7 @@ impl Parser {
     fn rgb_value(&mut self) -> ParserResult<u8> {
         let tok = self.consume(
             TokenType::Number,
-            "Expected a number from 0-255 for an rgb value.",
+            "Expected a number from 0-255 for an rgb value",
         )?;
         let num = tok.num.unwrap();
 
@@ -353,12 +353,12 @@ impl Parser {
     fn block(&mut self) -> ParserResult<BlockId> {
         self.consume(
             TokenType::LeftBrace,
-            "Expected a '[' at the beginning of a block.",
+            "Expected a '[' at the beginning of a block",
         )?;
         let id = self.block_id()?;
         self.consume(
             TokenType::RightBrace,
-            "Expected a ']' at the end of a block.",
+            "Expected a ']' at the end of a block",
         )?;
 
         Ok(id)
@@ -392,9 +392,9 @@ impl Parser {
 #[derive(Debug, Diagnostic, Error)]
 pub enum ParserError {
     #[diagnostic(code(parser::Parser))]
-    #[error("Expected {0:?}, at {1:?}.")]
+    #[error("{1}, {2}.")]
     Expected(TokenType, String, Position),
-    #[error("Expected One of {token_types:?} at {position:?}, {reason}.")]
+    #[error("{reason}, {position}.")]
     ExpectedOneOf {
         token_types: Vec<TokenType>,
         reason: String,
